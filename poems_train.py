@@ -21,6 +21,11 @@ def load_poems(file_path):
     with open(file_path, mode='r', encoding='utf-8') as f:
         for line in f.readlines():
             split = line.strip().split(':')
+            if '_' in content or '(' in content or '（' in content or '《' in content or '[' in content or \
+                            begin_token in content or end_token in content:
+                continue
+            if len(content) < 5 or len(content) > 79:
+                continue
             content = split[len(split) - 1]
             content = begin_token + content.replace(' ', '') + end_token
             poems.append(content)
