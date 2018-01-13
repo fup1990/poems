@@ -20,23 +20,30 @@ def load_poems(file_path):
     poems = []
     with open(file_path, mode='r', encoding='utf-8') as f:
         for line in f.readlines():
-            split = line.strip().split(':')
-            if '_' in content or '(' in content or '（' in content or '《' in content or '[' in content or \
-                            begin_token in content or end_token in content:
-                continue
-            if len(content) < 5 or len(content) > 79:
-                continue
-            content = split[len(split) - 1]
-            content = begin_token + content.replace(' ', '') + end_token
-            poems.append(content)
+            try:
+                split = line.strip().split(':')
+                content = split[len(split) - 1]
+                content = content.replace(' ', '')
+                if '_' in content or '(' in content or '（' in content or '《' in content or '[' in content or \
+                                begin_token in content or end_token in content:
+                    continue
+                if len(content) < 5 or len(content) > 79:
+                    continue
+                content = begin_token + content + end_token
+                poems.append(content)
+            except ValueError as e:
+                pass
+    poems = sorted(poems, key=lambda l : len(line))
+    print('poems count is %s' % (len(poems)))
     return poems
 
 
 def process_poems(poems):
     all_words = []
     for poem in poems:
-        for word in poem:
-            all_words.append(word)
+        all_words += [word for word in poem]
+
+    # 统计字数
     count = collections.Counter(all_words)
     sort = sorted(count.items(), key=lambda x: -x[1])
     # 解压sort
@@ -45,10 +52,7 @@ def process_poems(poems):
     # 创建一个字典，key:文字,value:序号
     dict_words = dict(zip(words, range(len(words))))
     # 以序号的形式表示诗
-    vector = []
-    for poem in poems:
-        m = map(lambda word: dict_words.get(word, len(words)), poem)
-        vector.append(list(m))
+    vector = [list(map(lambda word: dict_words.get(word, len(words)), poem)) for poem in poems]
     return words, dict_words, vector
 
 
@@ -61,8 +65,7 @@ def generate_batch(batch_size, vector, dict_words):
         end_index = start_index + batch_size
 
         batch_poems = vector[start_index:end_index]
-        dict_length = map(len, batch_poems)
-        length = max(dict_length)
+        length = max(map(len, batch_poems))
         x = np.full((batch_size, length), dict_words[' '], np.int32)
         for row in range(batch_size):
             x[row, :len(batch_poems[row])] = batch_poems[row]
@@ -78,7 +81,8 @@ def rnn_model(input_data, ouput_data, vector_length):
     end_points = {}
     # lstm_cell = tf.contrib.rnn.BasicLSTMCell(rnn_size, state_is_tuple=True)
     lstm = tf.nn.rnn_cell.BasicLSTMCell(rnn_size, state_is_tuple=True)
-    cell = tf.nn.rnn_cell.MultiRNNCell([lstm] * num_layers, state_is_tuple=True)
+    # cell = tf.nn.rnn_cell.MultiRNNCell([lstm] * num_layers, state_is_tuple=True)
+    cell = tf.contrib.rnn.MultiRNNCell([lstm] * num_layers, state_is_tuple=True)
     # 初始化状态，全是0的向量
     if ouput_data is not None:
         initial_state = cell.zero_state(batch_size, tf.float32)
@@ -88,22 +92,25 @@ def rnn_model(input_data, ouput_data, vector_length):
     with tf.device("/cpu:0"):
         embedding = tf.get_variable('embedding', initializer=tf.random_uniform([vector_length + 1, rnn_size], -1.0, 1.0))
         inputs = tf.nn.embedding_lookup(embedding, input_data)
-        inputs = tf.nn.dropout(inputs, keep_prob)
+        # inputs = tf.nn.dropout(inputs, keep_prob)
 
     outputs, last_state = tf.nn.dynamic_rnn(cell=cell, inputs=inputs, initial_state=initial_state)
-    outputs = tf.reshape(outputs, [-1, rnn_size])
+    output = tf.reshape(outputs, [-1, rnn_size])
+
     weights = tf.Variable(tf.truncated_normal([rnn_size, vector_length + 1]))
     bias = tf.Variable(tf.zeros([vector_length + 1]))
-    logits = tf.nn.bias_add(tf.matmul(outputs, weights), bias)
+    logits = tf.nn.bias_add(tf.matmul(output, weights), bias)
 
     if ouput_data is not None:
+
         labels = tf.one_hot(tf.reshape(ouput_data, [-1]), depth=vector_length + 1)
+
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
         total_loss = tf.reduce_mean(loss)
         train_op = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
 
         end_points['initial_state'] = initial_state
-        end_points['output'] = outputs
+        end_points['output'] = output
         end_points['train_op'] = train_op
         end_points['total_loss'] = total_loss
         end_points['loss'] = loss
@@ -124,7 +131,7 @@ def run_training():
     words, dict_words, vector = process_poems(poems)
     # 批量处理,获取输入
     data_x, data_y = generate_batch(batch_size, vector, dict_words)
-    print(data_x[0])
+
     input_data = tf.placeholder(tf.int32, [batch_size, None])
     output_data = tf.placeholder(tf.int32, [batch_size, None])
     # RNN神经网络
@@ -139,7 +146,7 @@ def run_training():
         if checkpoint:
             saver.restore(sess, checkpoint)
             print("## restore from the checkpoint {0}".format(checkpoint))
-            start_epoch +=int(checkpoint.split('-')[-1])
+            start_epoch += int(checkpoint.split('-')[-1])
         print('## start training...')
         try:
             for epoch in range(start_epoch, epochs):
