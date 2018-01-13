@@ -19,17 +19,19 @@ def to_word(predict, vocabs):
 def gen_poem():
     batch_size = 1
     words, dict_words, vector = process_poems(corpus_file)
-    input_data = tf.Variable(tf.int32, [batch_size, None])
-    end_points = rnn_model(input_data, None, vector)
 
-    saver = tf.train.Saver()
+    input_data = tf.Variable(tf.int32, [batch_size, None])
+
+    end_points = rnn_model(input_data, None, len(vector))
+
+    saver = tf.train.Saver(tf.global_variables())
     init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
     with tf.Session() as sess:
         sess.run(init_op)
-        checkpoint = tf.train.latest_checkpoint(end_points)
-        sess.reset(sess, checkpoint)
+        checkpoint = tf.train.latest_checkpoint(model_dir)
+        saver.restore(sess, checkpoint)
 
-        x = np.array([list(map(dict_words, start_token))])
+        x = np.array([list(map(dict_words.get, start_token))])
         [predict, last_state] = sess.run([end_points['prediction'], end_points['last_state']], feed_dict={input_data: x})
         word = to_word(predict, vector)
         poem = ''
@@ -39,7 +41,7 @@ def gen_poem():
             i += 1
             if i > 24:
                 break
-            x =np.zeros((1, 1))
+            x = np.zeros((1, 1))
             x[0, 0] = dict_words[word]
             [predict, last_state] = sess.run([end_points['prediction'], end_points['last_state']], feed_dict={input_data: x, end_points['initial_state']: last_state})
             word = to_word(predict, vector)

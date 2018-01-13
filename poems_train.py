@@ -106,8 +106,12 @@ def rnn_model(input_data, ouput_data, vector_length):
         labels = tf.one_hot(tf.reshape(ouput_data, [-1]), depth=vector_length + 1)
 
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
+
         total_loss = tf.reduce_mean(loss)
-        train_op = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
+
+        lr = tf.train.exponential_decay(learning_rate, tf.Variable(0), 100, 0.96, staircase=True)
+
+        train_op = tf.train.AdamOptimizer(lr).minimize(total_loss)
 
         end_points['initial_state'] = initial_state
         end_points['output'] = output
