@@ -77,14 +77,14 @@ def generate_batch(batch_size, vector, dict_words):
     return data_x, data_y
 
 
-def rnn_model(input_data, ouput_data, vector_length):
+def rnn_model(input_data, output_data, vector_length):
     end_points = {}
     # lstm_cell = tf.contrib.rnn.BasicLSTMCell(rnn_size, state_is_tuple=True)
     lstm = tf.nn.rnn_cell.BasicLSTMCell(rnn_size, state_is_tuple=True)
     # cell = tf.nn.rnn_cell.MultiRNNCell([lstm] * num_layers, state_is_tuple=True)
     cell = tf.contrib.rnn.MultiRNNCell([lstm] * num_layers, state_is_tuple=True)
     # 初始化状态，全是0的向量
-    if ouput_data is not None:
+    if output_data is not None:
         initial_state = cell.zero_state(batch_size, tf.float32)
     else:
         initial_state = cell.zero_state(1, tf.float32)
@@ -92,7 +92,8 @@ def rnn_model(input_data, ouput_data, vector_length):
     with tf.device("/cpu:0"):
         embedding = tf.get_variable('embedding', initializer=tf.random_uniform([vector_length + 1, rnn_size], -1.0, 1.0))
         inputs = tf.nn.embedding_lookup(embedding, input_data)
-        # inputs = tf.nn.dropout(inputs, keep_prob)
+        if output_data is not None:
+            inputs = tf.nn.dropout(inputs, keep_prob)
 
     outputs, last_state = tf.nn.dynamic_rnn(cell=cell, inputs=inputs, initial_state=initial_state)
     output = tf.reshape(outputs, [-1, rnn_size])
@@ -101,9 +102,9 @@ def rnn_model(input_data, ouput_data, vector_length):
     bias = tf.Variable(tf.zeros([vector_length + 1]))
     logits = tf.nn.bias_add(tf.matmul(output, weights), bias)
 
-    if ouput_data is not None:
+    if output_data is not None:
 
-        labels = tf.one_hot(tf.reshape(ouput_data, [-1]), depth=vector_length + 1)
+        labels = tf.one_hot(tf.reshape(output_data, [-1]), depth=vector_length + 1)
 
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
 
