@@ -109,7 +109,7 @@ def rnn_model(input_data, output_data, vector_length):
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
 
         total_loss = tf.reduce_mean(loss)
-
+        # 动态设置学习率
         lr = tf.train.exponential_decay(learning_rate, tf.Variable(0), 100, 0.96, staircase=True)
 
         train_op = tf.train.AdamOptimizer(lr).minimize(total_loss)
