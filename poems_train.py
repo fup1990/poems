@@ -43,7 +43,7 @@ def process_poems(poems):
     for poem in poems:
         all_words += [word for word in poem]
 
-    # 统计字数
+    # 统计每个字的频数
     count = collections.Counter(all_words)
     sort = sorted(count.items(), key=lambda x: -x[1])
     # 解压sort
