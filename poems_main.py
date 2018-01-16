@@ -56,6 +56,5 @@ def pretty_print_poem(poem):
 
 
 if __name__ == '__main__':
-    # begin_char = input('## please input the first character:')
     poem = gen_poem()
     pretty_print_poem(poem=poem)
