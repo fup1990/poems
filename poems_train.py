@@ -152,6 +152,9 @@ def run_training():
             saver.restore(sess, checkpoint)
             print("## restore from the checkpoint {0}".format(checkpoint))
             start_epoch += int(checkpoint.split('-')[-1])
+
+        writer = tf.summary.FileWriter('/Users/fupeng/Development/workspace/poems/log', sess.graph)
+
         print('## start training...')
         try:
             for epoch in range(start_epoch, epochs):
@@ -169,6 +172,7 @@ def run_training():
                     saver.save(sess, os.path.join(model_dir, model_prefix), global_step=epoch)
         except KeyboardInterrupt:
             saver.save(sess, os.path.join(model_dir, model_prefix), global_step=epoch)
+            writer.close()
 
 def main(_):
     run_training()
