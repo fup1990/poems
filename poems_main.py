@@ -30,7 +30,8 @@ def gen_poem():
     with tf.Session() as sess:
         sess.run(init_op)
         checkpoint = tf.train.latest_checkpoint(model_dir)
-        saver.restore(sess, checkpoint)
+        if checkpoint:
+            saver.restore(sess, checkpoint)
 
         x = np.array([list(map(dict_words.get, start_token))])
         [predict, last_state] = sess.run([end_points['prediction'], end_points['last_state']], feed_dict={input_data: x})
