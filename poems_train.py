@@ -103,15 +103,15 @@ def rnn_model(input_data, output_data, vector_length):
     logits = tf.nn.bias_add(tf.matmul(output, weights), bias)
 
     if output_data is not None:
-
-        labels = tf.one_hot(tf.reshape(output_data, [-1]), depth=vector_length + 1)
-
+        reshape = tf.reshape(output_data, [-1])
+        labels = tf.one_hot(reshape, depth=vector_length + 1)
+        # softmax + 交叉熵
         loss = tf.nn.softmax_cross_entropy_with_logits(labels=labels, logits=logits)
 
         total_loss = tf.reduce_mean(loss)
         # 动态设置学习率
         lr = tf.train.exponential_decay(learning_rate, tf.Variable(0), 100, 0.96, staircase=True)
-
+        # 梯度下降优化器
         train_op = tf.train.AdamOptimizer(lr).minimize(total_loss)
 
         end_points['initial_state'] = initial_state
@@ -167,7 +167,7 @@ def run_training():
                         end_points['train_op']
                     ], feed_dict={input_data: data_x[n], output_data: data_y[n]})
                     n += 1
-                    print('Epoch: %d, batch: %d, training loss: %.6f' % (epoch, batch, loss))
+                    print('batch: %d, training loss: %.6f' % (batch, loss))
                 if epoch % 10 == 0:
                     saver.save(sess, os.path.join(model_dir, model_prefix), global_step=epoch)
         except KeyboardInterrupt:
