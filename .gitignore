@@ -1,3 +1,4 @@
 .idea/
 model/*
 __pycache__/poems_train.cpython-36.pyc
+*.local
