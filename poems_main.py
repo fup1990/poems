@@ -41,7 +41,7 @@ def gen_poem():
         while word != end_token:
             poem += word
             i += 1
-            if i > 32:
+            if i > 24:
                 break
             x = np.zeros((1, 1))
             x[0, 0] = dict_words[word]
